@@ -1,0 +1,123 @@
+---
+title: "老婆的周记录"
+output: html_document
+---
+
+```{r,echo=FALSE,results='hide',message=FALSE}
+# 载入库
+library("lubridate")
+library("ggplot2")
+library("reshape")
+# 载入数据
+d = read.table('../data/gf.txt',sep=',',header = TRUE,encoding='UTF-8',stringsAsFactors=FALSE)
+d$date = parse_date_time(d$date,orders='ymd')
+start_date = parse_date_time('2016-11-14 00:00',orders='ymdHM')
+end_date = parse_date_time('2016-11-20 23:59',orders='ymdHM')
+flag1 = d$date >= start_date
+flag2 = d$date <=  end_date
+d = subset(d, flag1 & flag2  )
+d['week'] = 1:7
+d = d[c('date','week','up','work','down')]
+# 特殊处理
+d$up = parse_date_time(d$up,orders='hm')
+d$work = parse_date_time(d$work,orders='hm')
+d$down = parse_date_time(d$down,orders='hm')
+```
+
+#概述
+
+统计时间：`r format(start_date,'%m月%d日')` 至 `r format(end_date,'%m月%d日')`
+
+工作了：`r 7-sum(is.na(d$work))`天。
+
+加班时间为：0天。
+
+
+时间概述如下表：
+
+
+
+```{r,echo=FALSE}
+mins = c(format(min(d$up,na.rm=TRUE),'%H:%M'),format(min(d$work,na.rm=TRUE),'%H:%M'),format(min(d$down,na.rm=TRUE),'%H:%M'))
+maxs = c(format(max(d$up,na.rm=TRUE),'%H:%M'),format(max(d$work,na.rm=TRUE),'%H:%M'),format(max(d$down,na.rm=TRUE),'%H:%M'))
+means = c(format(mean(d$up,na.rm=TRUE),'%H:%M'),format(mean(d$work,na.rm=TRUE),'%H:%M'),format(mean(d$down,na.rm=TRUE),'%H:%M'))
+d_sumarize = data.frame(mins,maxs,means)
+colnames(d_sumarize) = c('最早','最晚','平均')
+row.names(d_sumarize) = c('起床','下班','睡觉')
+knitr::kable(d_sumarize)
+```
+
+
+
+
+
+# 统计信息
+
+具体的统计信息如下表所示：
+
+```{r,echo=FALSE}
+d_str = sapply(d[-2], format,'%H:%M')
+d_str = as.data.frame(d_str)
+d_str$date = format(d$date,'%m-%d')
+d_str$week = d$week
+d_str = d_str[c('date','week','up','work','down')]
+colnames(d_str) = c('日期','星期','起床','下班','睡觉')
+knitr::kable(d_str)
+```
+
+# 统计可视化
+
+对一周的时间进行可视化分析如下：
+
+- 正常起床时间为：08:50之前
+- 正常下班时间为：18:40之前
+- 正常睡觉时间为：00:30之前
+
+
+
+```{r,echo=FALSE,results='hide',message=FALSE,warning=FALSE,fig.align='center'}
+h11 = parse_date_time('05:30',orders='hm')
+h12 = parse_date_time('08:50',orders='hm')
+h21 = parse_date_time('17:00',orders='hm')
+h22 = parse_date_time('18:40',orders='hm')
+h31 = parse_date_time('22:00',orders='hm')
+h32 = parse_date_time('00:30',orders='hm')
+h31 = h31-days(1)
+
+d_r = melt(d,id=c('date','week'))
+
+f11 = d_r$value>h11
+f12 = d_r$value<h12
+f21 = d_r$value>h21
+f22 = d_r$value<h22
+f31 = d_r$value>h31
+f32 = d_r$value<h32
+flag = (f11 & f12) | (f21 & f22) |(f31 & f32)
+flag = flag & (! is.na(d_r$value))
+
+
+levels(d_r$variable) = c('起床','下班','睡觉')
+p = ggplot(d_r,aes(week,value)) + geom_point(size=3) + geom_point(data=d_r[!flag,],size=3,color='red')
+p + geom_line() + facet_grid(variable~.,scales = "free") +
+    scale_y_datetime(date_labels='%H:%M',date_breaks="30 min",  date_minor_breaks="15 min") +
+    scale_x_continuous(breaks=c(1:7)) +
+    xlab('星期')+
+    ylab('时间')+
+    theme(strip.text.y = element_text(size = 13,  angle = 0),
+          axis.text.x = element_text(size = 11),
+          axis.text.y = element_text(size = 11),
+          axis.title.x = element_text(size = 11),
+          axis.title.y = element_text(size = 11,angle=0))
+```
+
+# 老公总结
+
+有几天晚上应该晚安的时候要睡了就没biu，我就大概约莫算了啊。
+
+马上就要见面啦啦啦~~
+
+
+
+
+
+
